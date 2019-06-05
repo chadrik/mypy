@@ -5,7 +5,7 @@ types until the end of semantic analysis, and these break various type
 operations, including subtype checks.
 """
 
-from typing import List
+from typing import List, Tuple, Any
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, OverloadedFuncDef
 from mypy.types import Type, Instance, TypeVarType, AnyType
@@ -69,13 +69,13 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     not any(is_same_type(actual, value)
                             for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name()), context)
+                    self.fail('Invalid type argument value for "{}"',
+                              (type.name(),), context)
                 else:
                     class_name = '"{}"'.format(type.name())
                     actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                        arg_name, class_name, actual_type_name), context)
+                    self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE,
+                              (arg_name, class_name, actual_type_name), context)
 
-    def fail(self, msg: str, context: Context) -> None:
-        self.errors.report(context.get_line(), context.get_column(), msg)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], context: Context) -> None:
+        self.errors.report(context.get_line(), context.get_column(), msg, format_args=format_args)

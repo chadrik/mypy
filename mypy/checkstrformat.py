@@ -88,7 +88,7 @@ class StringFormatterChecker:
         specifiers = self.parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
-            self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
+            self.msg.fail('Bytes formatting is only supported in Python 3.5 and later', (),
                           replacements)
             return AnyType(TypeOfAny.from_error)
 
@@ -312,15 +312,17 @@ class StringFormatterChecker:
         if p == 'b':
             if self.chk.options.python_version < (3, 5):
                 self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
-                              context)
+                              (), context)
                 return None
             if not isinstance(expr, BytesExpr):
-                self.msg.fail("Format character 'b' is only supported on bytes patterns", context)
+                self.msg.fail("Format character 'b' is only supported on bytes patterns",
+                              (), context)
                 return None
             return self.named_type('builtins.bytes')
         elif p == 'a':
             if self.chk.options.python_version < (3, 0):
-                self.msg.fail("Format character 'a' is only supported in Python 3", context)
+                self.msg.fail("Format character 'a' is only supported in Python 3",
+                              (), context)
                 return None
             # todo: return type object?
             return AnyType(TypeOfAny.special_form)

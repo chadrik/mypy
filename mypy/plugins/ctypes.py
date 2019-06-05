@@ -121,16 +121,16 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
             if arg_kind == nodes.ARG_POS and not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
                     'Array constructor argument {} of type "{}"'
-                    ' is not convertible to the array element type "{}"'
-                    .format(arg_num, arg_type, et),
+                    ' is not convertible to the array element type "{}"',
+                    (arg_num, (), arg_type, et),
                     ctx.context)
             elif arg_kind == nodes.ARG_STAR:
                 ty = ctx.api.named_generic_type("typing.Iterable", [allowed])
                 if not is_subtype(arg_type, ty):
                     ctx.api.msg.fail(
                         'Array constructor argument {} of type "{}"'
-                        ' is not convertible to the array element type "Iterable[{}]"'
-                        .format(arg_num, arg_type, et),
+                        ' is not convertible to the array element type "Iterable[{}]"',
+                        (arg_num, (), arg_type, et),
                         ctx.context)
 
     return ctx.default_return_type
@@ -200,8 +200,8 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             else:
                 ctx.api.msg.fail(
                     'ctypes.Array attribute "value" is only available'
-                    ' with element type c_char or c_wchar, not "{}"'
-                    .format(et),
+                    ' with element type c_char or c_wchar, (), not "{}"',
+                    (et,),
                     ctx.context)
         return UnionType.make_simplified_union(types)
     return ctx.default_attr_type
@@ -219,8 +219,8 @@ def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             else:
                 ctx.api.msg.fail(
                     'ctypes.Array attribute "raw" is only available'
-                    ' with element type c_char, not "{}"'
-                    .format(et),
+                    ' with element type c_char, (), not "{}"',
+                    (et,),
                     ctx.context)
         return UnionType.make_simplified_union(types)
     return ctx.default_attr_type

@@ -1,7 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Tuple, Any
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -43,7 +43,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         raise NotImplementedError
 

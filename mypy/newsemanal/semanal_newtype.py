@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType, TypeOfAny
 from mypy.nodes import (
@@ -152,5 +152,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str,format_args: Tuple[Any, ...],  ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

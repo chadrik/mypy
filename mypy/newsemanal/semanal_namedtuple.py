@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 from contextlib import contextmanager
-from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
+from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator, Any
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
@@ -492,5 +492,5 @@ class NamedTupleAnalyzer:
 
     # Helpers
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

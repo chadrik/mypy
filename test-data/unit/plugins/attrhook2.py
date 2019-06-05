@@ -18,7 +18,7 @@ def magic_field_callback(ctx: AttributeContext) -> Type:
 
 
 def nonexistent_field_callback(ctx: AttributeContext) -> Type:
-    ctx.api.fail("Field does not exist", ctx.context)
+    ctx.api.fail("Field does not exist", (), ctx.context)
     return AnyType(TypeOfAny.from_error)
 
 

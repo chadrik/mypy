@@ -4,7 +4,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
 from collections import OrderedDict
-from typing import Optional, List, Set, Tuple, cast
+from typing import Optional, List, Set, Tuple, cast, Any
 
 from mypy.types import Type, AnyType, TypeOfAny, TypedDictType
 from mypy.nodes import (
@@ -65,7 +65,7 @@ class TypedDictAnalyzer:
                 if any(not isinstance(expr, RefExpr) or
                        expr.fullname != 'mypy_extensions.TypedDict' and
                        not self.is_typeddict(expr) for expr in defn.base_type_exprs):
-                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+                    self.fail("All bases of a new TypedDict must be TypedDict types", (), defn)
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
                 keys = []  # type: List[str]
                 types = []
@@ -79,8 +79,8 @@ class TypedDictAnalyzer:
                     valid_items = base_items.copy()
                     for key in base_items:
                         if key in keys:
-                            self.fail('Cannot overwrite TypedDict field "{}" while merging'
-                                      .format(key), defn)
+                            self.fail('Cannot overwrite TypedDict field "{}" while merging',
+                                      (key,), defn)
                             valid_items.pop(key)
                     keys.extend(valid_items.keys())
                     types.extend(valid_items.values())
@@ -104,7 +104,7 @@ class TypedDictAnalyzer:
                                                                                  List[Type],
                                                                                  Set[str]]:
         if self.options.python_version < (3, 6):
-            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
+            self.fail('TypedDict class syntax is only supported in Python 3.6', (), defn)
             return [], [], set()
         fields = []  # type: List[str]
         types = []  # type: List[Type]
@@ -114,18 +114,18 @@ class TypedDictAnalyzer:
                 if (not isinstance(stmt, PassStmt) and
                     not (isinstance(stmt, ExpressionStmt) and
                          isinstance(stmt.expr, (EllipsisExpr, StrExpr)))):
-                    self.fail(TPDICT_CLASS_ERROR, stmt)
+                    self.fail(TPDICT_CLASS_ERROR, (), stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
-                self.fail(TPDICT_CLASS_ERROR, stmt)
+                self.fail(TPDICT_CLASS_ERROR, (), stmt)
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
-                              .format(name), stmt)
+                    self.fail('Cannot overwrite TypedDict field "{}" while extending',
+                              (name,), stmt)
                     continue
                 if name in fields:
-                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
+                    self.fail('Duplicate TypedDict field "{}"', (name,), stmt)
                     continue
                 # Append name and type in this case...
                 fields.append(name)
@@ -134,15 +134,15 @@ class TypedDictAnalyzer:
                              else self.api.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
-                    self.fail(TPDICT_CLASS_ERROR, stmt)
+                    self.fail(TPDICT_CLASS_ERROR, (), stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
-                    self.fail('Right hand side values are not supported in TypedDict', stmt)
+                    self.fail('Right hand side values are not supported in TypedDict', (), stmt)
         total = True  # type: Optional[bool]
         if 'total' in defn.keywords:
             total = self.api.parse_bool(defn.keywords['total'])
             if total is None:
-                self.fail('Value of "total" must be True or False', defn)
+                self.fail('Value of "total" must be True or False', (), defn)
                 total = True
         required_keys = set(fields) if total else set()
         return fields, types, required_keys
@@ -193,8 +193,8 @@ class TypedDictAnalyzer:
             name = cast(StrExpr, call.args[0]).value
             if var_name is not None and name != var_name:
                 self.fail(
-                    "First argument '{}' to TypedDict() does not match variable name '{}'".format(
-                        name, var_name), node)
+                    "First argument '{}' to TypedDict() does not match variable name '{}'",
+                    (name, var_name), node)
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
@@ -269,7 +269,7 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(self, message: str,
                            context: Context) -> Tuple[List[str], List[Type], bool, bool]:
-        self.fail(message, context)
+        self.fail(message, (), context)
         return [], [], True, False
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
@@ -288,5 +288,5 @@ class TypedDictAnalyzer:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
                 expr.node.typeddict_type is not None)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

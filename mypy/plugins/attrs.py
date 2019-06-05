@@ -135,7 +135,7 @@ class Attribute:
                 init_type = UnionType.make_union([init_type, NoneTyp()])
 
             if not init_type:
-                ctx.api.fail(Errors.CANNOT_DETERMINE_INIT_FROM_CONVERTER, self.context)
+                ctx.api.fail(Errors.CANNOT_DETERMINE_INIT_FROM_CONVERTER, (), self.context)
                 init_type = AnyType(TypeOfAny.from_error)
         elif self.converter.name == '':
             # This means we had a converter but it's not of a type we can infer.
@@ -215,14 +215,14 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
-            ctx.api.fail(Errors.AUTO_ATTRIB_UNSUPPORTED, ctx.reason)
+            ctx.api.fail(Errors.AUTO_ATTRIB_UNSUPPORTED, (), ctx.reason)
             return
         if not info.defn.base_type_exprs:
             # Note: This will not catch subclassing old-style classes.
-            ctx.api.fail(Errors.OLD_STYLE_CLASSES_UNSUPPORTED, info.defn)
+            ctx.api.fail(Errors.OLD_STYLE_CLASSES_UNSUPPORTED, (), info.defn)
             return
         if kw_only:
-            ctx.api.fail(Errors.KW_ONLY_UNSUPPORTED, ctx.reason)
+            ctx.api.fail(Errors.KW_ONLY_UNSUPPORTED, (), ctx.reason)
             return
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
@@ -316,9 +316,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
             continue
 
         if not attribute.has_default and last_default:
-            ctx.api.fail(Errors.NON_DEFAULT_ATTR_NOT_ALLOWED_AFTER_DEFAULT, attribute.context)
+            ctx.api.fail(Errors.NON_DEFAULT_ATTR_NOT_ALLOWED_AFTER_DEFAULT, (), attribute.context)
         if last_kw_only:
-            ctx.api.fail(Errors.NON_KW_ONLY_ATTR_NOT_ALLOWED_AFTER_KW_ONLY, attribute.context)
+            ctx.api.fail(Errors.NON_KW_ONLY_ATTR_NOT_ALLOWED_AFTER_KW_ONLY, (), attribute.context)
         last_default |= attribute.has_default
 
     return attributes
@@ -412,7 +412,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         return None
 
     if len(stmt.lvalues) > 1:
-        ctx.api.fail(Errors.TOO_MANY_NAMES_FOR_ATTR, stmt)
+        ctx.api.fail(Errors.TOO_MANY_NAMES_FOR_ATTR, (), stmt)
         return None
 
     # This is the type that belongs in the __init__ method for this attrib.
@@ -424,7 +424,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     # See https://github.com/python-attrs/attrs/issues/481 for explanation.
     kw_only |= _get_bool_argument(ctx, rvalue, 'kw_only', False)
     if kw_only and ctx.api.options.python_version[0] < 3:
-        ctx.api.fail(Errors.KW_ONLY_UNSUPPORTED, stmt)
+        ctx.api.fail(Errors.KW_ONLY_UNSUPPORTED, (), stmt)
         return None
 
     # TODO: Check for attr.NOTHING
@@ -432,7 +432,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
 
     if attr_has_default and attr_has_factory:
-        ctx.api.fail(Errors.CANT_PASS_DEFAULT_AND_FACTORY, rvalue)
+        ctx.api.fail(Errors.CANT_PASS_DEFAULT_AND_FACTORY, (), rvalue)
     elif attr_has_factory:
         attr_has_default = True
 
@@ -442,7 +442,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         try:
             un_type = expr_to_unanalyzed_type(type_arg)
         except TypeTranslationError:
-            ctx.api.fail(Errors.INVALID_ARG_TO_TYPE, type_arg)
+            ctx.api.fail(Errors.INVALID_ARG_TO_TYPE, (), type_arg)
         else:
             init_type = ctx.api.anal_type(un_type)
             if init_type and isinstance(lhs.node, Var) and not lhs.node.type:
@@ -454,9 +454,9 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     converter = _get_argument(rvalue, 'converter')
     convert = _get_argument(rvalue, 'convert')
     if convert and converter:
-        ctx.api.fail(Errors.CANT_PASS_CONVERT_AND_CONVERTER, rvalue)
+        ctx.api.fail(Errors.CANT_PASS_CONVERT_AND_CONVERTER, (), rvalue)
     elif convert:
-        ctx.api.fail(Errors.CONVERT_IS_DEPRECATED, rvalue)
+        ctx.api.fail(Errors.CONVERT_IS_DEPRECATED, (), rvalue)
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
@@ -489,7 +489,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             return argument
 
         # Signal that we have an unsupported converter.
-        ctx.api.fail(Errors.UNSUPPORTED_CONVERTER, converter)
+        ctx.api.fail(Errors.UNSUPPORTED_CONVERTER, (), converter)
         return Converter('')
     return Converter(None)
 

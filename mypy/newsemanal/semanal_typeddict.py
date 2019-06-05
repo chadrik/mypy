@@ -1,7 +1,7 @@
 """Semantic analysis of TypedDict definitions."""
 
 from collections import OrderedDict
-from typing import Optional, List, Set, Tuple, cast
+from typing import Optional, List, Set, Tuple, cast, Any
 
 from mypy.types import Type, AnyType, TypeOfAny, TypedDictType
 from mypy.nodes import (
@@ -300,7 +300,7 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(self, message: str,
                            context: Context) -> Tuple[List[str], List[Type], bool, bool]:
-        self.fail(message, context)
+        self.fail(message, (), context)
         return [], [], True, False
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
@@ -319,5 +319,5 @@ class TypedDictAnalyzer:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
                 expr.node.typeddict_type is not None)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

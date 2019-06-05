@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType, TypeOfAny
 from mypy.nodes import (
@@ -44,11 +44,11 @@ class NewTypeAnalyzer:
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
-                self.fail("NewType cannot be used with protocol classes", s)
+                self.fail("NewType cannot be used with protocol classes", (), s)
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(self.msg.format(old_type)), s)
+            self.fail(message, self.msg, (old_type,), s)
             return
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
@@ -60,7 +60,7 @@ class NewTypeAnalyzer:
         # If so, add it to the symbol table.
         node = self.api.lookup(name, s)
         if node is None:
-            self.fail("Could not find {} in current namespace".format(name), s)
+            self.fail("Could not find {} in current namespace", (name,), s)
             return
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
@@ -79,9 +79,9 @@ class NewTypeAnalyzer:
             name = s.lvalues[0].name
             if not lvalue.is_inferred_def:
                 if s.type:
-                    self.fail("Cannot declare the type of a NewType declaration", s)
+                    self.fail("Cannot declare the type of a NewType declaration", (), s)
                 else:
-                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
+                    self.fail("Cannot redefine '%s' as a NewType" % name, (), s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other
@@ -94,16 +94,16 @@ class NewTypeAnalyzer:
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
         if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
-            self.fail("NewType(...) expects exactly two positional arguments", context)
+            self.fail("NewType(...) expects exactly two positional arguments", (), context)
             return None
 
         # Check first argument
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
-            self.fail("Argument 1 to NewType(...) must be a string literal", context)
+            self.fail("Argument 1 to NewType(...) must be a string literal", (), context)
             has_failed = True
         elif args[0].value != name:
             msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
-            self.fail(msg.format(args[0].value, name), context)
+            self.fail(msg.format(args[0].value, (), name), context)
             has_failed = True
 
         # Check second argument
@@ -111,7 +111,7 @@ class NewTypeAnalyzer:
         try:
             unanalyzed_type = expr_to_unanalyzed_type(args[1])
         except TypeTranslationError:
-            self.fail(msg, context)
+            self.fail(msg, (), context)
             return None
 
         # We want to use our custom error message (see above), so we suppress
@@ -121,7 +121,7 @@ class NewTypeAnalyzer:
         # The caller of this function assumes that if we return a Type, it's always
         # a valid one. So, we translate AnyTypes created from errors into None.
         if isinstance(old_type, AnyType) and old_type.is_from_error:
-            self.fail(msg, context)
+            self.fail(msg, (), context)
             return None
 
         return None if has_failed else old_type
@@ -152,5 +152,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

@@ -49,7 +49,7 @@ Some important properties:
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable, Any,
 )
 
 from mypy.nodes import (
@@ -4173,7 +4173,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' (possibly by an import)'
         self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
 
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         if (not serious and
                 not self.options.check_untyped_defs and

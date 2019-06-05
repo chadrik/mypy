@@ -69,7 +69,7 @@ class TypeAnalyzerPluginInterface:
     options = None  # type: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError
 
@@ -133,7 +133,7 @@ class CheckerPluginInterface:
     options = None  # type: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -170,7 +170,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError

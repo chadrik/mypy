@@ -234,7 +234,7 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, (), ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         if key in ctx.type.required_keys:
@@ -280,7 +280,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, (), ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         value_type = ctx.type.items.get(key)
@@ -305,7 +305,7 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, (), ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         if key in ctx.type.required_keys:

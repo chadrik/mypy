@@ -35,7 +35,7 @@ TODO: Check if the third pass slows down type checking significantly.
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable, Any,
 )
 
 from mypy.nodes import (
@@ -1352,7 +1352,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
             if metaclass_name is None:
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
+                self.fail("Dynamic metaclass not supported for '{}'", (defn.name,), defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
@@ -3756,7 +3756,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             extra_msg = ' (possibly by an import)'
         self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
 
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         if (not serious and
                 not self.options.check_untyped_defs and
@@ -3765,10 +3765,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
+        if format_args:
+            msg = msg.format(*format_args)
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
-        self.fail(msg, ctx, blocker=True)
+        self.fail(msg, (), ctx, blocker=True)
 
     def note(self, msg: str, ctx: Context) -> None:
         if (not self.options.check_untyped_defs and

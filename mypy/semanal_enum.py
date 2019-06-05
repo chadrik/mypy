@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import List, Tuple, Optional, Union, cast
+from typing import List, Tuple, Optional, Union, cast, Any
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
@@ -152,10 +152,10 @@ class EnumCallAnalyzer:
     def fail_enum_call_arg(self, message: str,
                            context: Context) -> Tuple[List[str],
                                                       List[Optional[Expression]], bool]:
-        self.fail(message, context)
+        self.fail(message, (), context)
         return [], [], False
 
     # Helpers
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context) -> None:
+        self.api.fail(msg, format_args, ctx)

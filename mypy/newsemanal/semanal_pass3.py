@@ -10,7 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, cast, Tuple
+from typing import Dict, List, Callable, Optional, Union, cast, Tuple, Any
 
 from mypy import message_registry, state
 from mypy.nodes import (
@@ -207,7 +207,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
         return self.sem.lookup_fully_qualified(fullname)
 
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: str, format_args: Tuple[Any, ...], ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         self.sem.fail(msg, ctx, serious, blocker=blocker)
 

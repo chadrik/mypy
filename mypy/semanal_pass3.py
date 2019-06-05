@@ -10,7 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, cast, Tuple
+from typing import Dict, List, Callable, Optional, Union, cast, Tuple, Any
 
 from mypy import message_registry, state
 from mypy.nodes import (
@@ -596,7 +596,7 @@ class ForwardReferenceResolver(TypeTranslator):
     * Replaces instance types generated from unanalyzed NamedTuple and TypedDict class syntax
       found in first pass with analyzed TupleType and TypedDictType.
     """
-    def __init__(self, fail: Callable[[str, Context], None],
+    def __init__(self, fail: Callable[[str, Tuple[Any, ...], Context], None],
                  start: Union[Node, SymbolTableNode], warn: bool) -> None:
         self.seen = []  # type: List[Type]
         self.fail = fail
@@ -608,7 +608,7 @@ class ForwardReferenceResolver(TypeTranslator):
             if self.warn:
                 assert isinstance(self.start, Node), "Internal error: invalid error context"
                 self.fail('Recursive types not fully supported yet,'
-                          ' nested types replaced with "Any"', self.start)
+                          ' nested types replaced with "Any"', (), self.start)
             return True
         self.seen.append(t)
         return False

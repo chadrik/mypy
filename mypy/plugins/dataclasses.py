@@ -115,7 +115,7 @@ class DataclassTransformer:
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
-                ctx.api.fail('eq must be True if order is True', ctx.cls)
+                ctx.api.fail('eq must be True if order is True', (), ctx.cls)
 
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
@@ -132,7 +132,7 @@ class DataclassTransformer:
                 if existing_method is not None:
                     assert existing_method.node
                     ctx.api.fail(
-                        'You may not have a custom %s method when order=True' % method_name,
+                        'You may not have a custom {} method when order=True', (method_name,),
                         existing_method.node,
                     )
 
@@ -278,7 +278,7 @@ class DataclassTransformer:
             # then that's an error.
             if found_default and attr.is_in_init and not attr.has_default:
                 ctx.api.fail(
-                    'Attributes without a default cannot follow attributes with one',
+                    'Attributes without a default cannot follow attributes with one', (),
                     Context(line=attr.line, column=attr.column),
                 )
 
