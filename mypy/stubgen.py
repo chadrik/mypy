@@ -702,6 +702,18 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.clear_decorators()
         self.add(f"{self._indent}{'async ' if o.is_coroutine else ''}def {o.name}(")
         self.record_name(o.name)
+        args = self.get_func_args(o, is_abstract, is_overload)
+        retname = self.get_func_return(o, is_abstract)
+        retfield = ""
+        if retname is not None:
+            retfield = " -> " + retname
+
+        self.add(", ".join(args))
+        self.add(f"){retfield}: ...\n")
+        self._state = FUNC
+
+    def get_func_args(self, o: FuncDef, is_abstract: bool = False,
+                      is_overload: bool = False) -> list[str]:
         args: list[str] = []
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
@@ -743,6 +755,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             else:
                 arg = name + annotation
             args.append(arg)
+        return args
+
+    def get_func_return(self, o: FuncDef, is_abstract: bool) -> str | None:
         retname = None
         if o.name != "__init__" and isinstance(o.unanalyzed_type, CallableType):
             if isinstance(get_proper_type(o.unanalyzed_type.ret_type), AnyType):
@@ -776,13 +791,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             retname = f"{generator_name}[{yield_name}, {send_name}, {return_name}]"
         elif not has_return_statement(o) and not is_abstract:
             retname = "None"
-        retfield = ""
-        if retname is not None:
-            retfield = " -> " + retname
-
-        self.add(", ".join(args))
-        self.add(f"){retfield}: ...\n")
-        self._state = FUNC
+        return retname
 
     def is_none_expr(self, expr: Expression) -> bool:
         return isinstance(expr, NameExpr) and expr.name == "None"
