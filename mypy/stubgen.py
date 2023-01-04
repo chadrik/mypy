@@ -699,11 +699,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # dump decorators, just before "def ..."
         for s in self._decorators:
             self.add(s)
+        args = self.get_func_args(o)
+        retname = self.get_func_return(o, is_abstract)
         self.clear_decorators()
         self.add(f"{self._indent}{'async ' if o.is_coroutine else ''}def {o.name}(")
         self.record_name(o.name)
-        args = self.get_func_args(o, is_abstract, is_overload)
-        retname = self.get_func_return(o, is_abstract)
         retfield = ""
         if retname is not None:
             retfield = " -> " + retname
@@ -712,8 +712,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(f"){retfield}: ...\n")
         self._state = FUNC
 
-    def get_func_args(self, o: FuncDef, is_abstract: bool = False,
-                      is_overload: bool = False) -> list[str]:
+    def get_func_args(self, o: FuncDef) -> list[str]:
         args: list[str] = []
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
