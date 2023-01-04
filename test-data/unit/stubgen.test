@@ -960,6 +960,7 @@ noalias2: Incomplete
 noalias3: bool
 
 [case testComplexAlias]
+# flags: --allow-class-level-aliases
 # modules: main a
 
 from a import valid

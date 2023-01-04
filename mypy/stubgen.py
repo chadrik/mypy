@@ -229,6 +229,7 @@ class Options:
         verbose: bool,
         quiet: bool,
         export_less: bool,
+        allow_class_level_aliases: bool,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -247,6 +248,7 @@ class Options:
         self.verbose = verbose
         self.quiet = quiet
         self.export_less = export_less
+        self.allow_class_level_aliases = allow_class_level_aliases
 
 
 class StubSource:
@@ -594,6 +596,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         include_private: bool = False,
         analyzed: bool = False,
         export_less: bool = False,
+        allow_class_level_aliases: bool = False,
     ) -> None:
         # Best known value of __all__.
         self._all_ = _all_
@@ -608,6 +611,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = EMPTY
         self._toplevel_names: list[str] = []
         self._include_private = include_private
+        self.allow_class_level_aliases = allow_class_level_aliases
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
         self.analyzed = analyzed
@@ -995,7 +999,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if (
-                isinstance(lvalue, NameExpr)
+                (self.is_top_level() or self.allow_class_level_aliases)
+                and isinstance(lvalue, NameExpr)
                 and not self.is_private_name(lvalue.name)
                 and
                 # it is never an alias with explicit annotation
@@ -1623,6 +1628,7 @@ def generate_stub_from_ast(
     parse_only: bool = False,
     include_private: bool = False,
     export_less: bool = False,
+    allow_class_level_aliases: bool = False,
 ) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
@@ -1632,6 +1638,7 @@ def generate_stub_from_ast(
     gen = StubGenerator(
         mod.runtime_all,
         include_private=include_private,
+        allow_class_level_aliases=allow_class_level_aliases,
         analyzed=not parse_only,
         export_less=export_less,
     )
@@ -1695,7 +1702,8 @@ def generate_stubs(options: Options) -> None:
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(
-                mod, target, options.parse_only, options.include_private, options.export_less
+                mod, target, options.parse_only, options.include_private, options.export_less,
+                options.allow_class_level_aliases
             )
 
     # Separately analyse C modules using different logic.
@@ -1754,6 +1762,13 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="generate stubs for objects and members considered private "
         "(single leading underscore and no trailing underscores)",
+    )
+    parser.add_argument(
+        "--allow-class-level-aliases",
+        action="store_true",
+        help="by default variables which refer to the values of other variables "
+             "are only respected at the module-level. this allows aliases at the "
+             "class level as well.",
     )
     parser.add_argument(
         "--export-less",
@@ -1840,6 +1855,7 @@ def parse_options(args: list[str]) -> Options:
         verbose=ns.verbose,
         quiet=ns.quiet,
         export_less=ns.export_less,
+        allow_class_level_aliases=ns.allow_class_level_aliases,
     )
 
 
