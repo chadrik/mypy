@@ -1208,6 +1208,27 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ["def test(arg0: foo.bar.Action) -> other.Thing: ..."])
         assert_equal(set(imports), {"import foo", "import other"})
 
+    def test_generate_c_function_typing(self) -> None:
+
+        def test(arg0: str) -> None:
+            """
+            test(arg0: typing.Any) -> typing.List[str]
+            """
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(self.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(arg0: typing.Any) -> typing.List[str]: ..."])
+
     def test_generate_c_property_with_pybind11(self) -> None:
         """Signatures included by PyBind11 inside property.fget are read."""
 

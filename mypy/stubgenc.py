@@ -87,7 +87,7 @@ class ExternalSignatureGenerator(SignatureGenerator):
                 FunctionSig(
                     name=name,
                     args=infer_arg_sig_from_anon_docstring(self.func_sigs[name]),
-                    ret_type="Any",
+                    ret_type="typing.Any",
                 )
             ]
         else:
@@ -149,7 +149,7 @@ class FallbackSignatureGenerator(SignatureGenerator):
             FunctionSig(
                 name=name,
                 args=infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),
-                ret_type="Any",
+                ret_type="typing.Any",
             )
         ]
 
@@ -470,14 +470,14 @@ def generate_c_property_stub(
         fget = getattr(obj, "fget", None)
         inferred = infer_prop_type(getattr(fget, "__doc__", None))
     if not inferred:
-        inferred = "Any"
+        inferred = "typing.Any"
 
     if module is not None and imports is not None and known_modules is not None:
         inferred = strip_or_import(inferred, module, known_modules, imports)
 
     if is_static_property(obj):
         trailing_comment = "  # read-only" if readonly else ""
-        static_properties.append(f"{name}: ClassVar[{inferred}] = ...{trailing_comment}")
+        static_properties.append(f"{name}: typing.ClassVar[{inferred}] = ...{trailing_comment}")
     else:  # regular property
         if readonly:
             ro_properties.append("@property")
@@ -564,7 +564,7 @@ def generate_c_type_stub(
 
     for attr, value in attrs:
         static_properties.append(
-            "{}: ClassVar[{}] = ...".format(
+            "{}: typing.ClassVar[{}] = ...".format(
                 attr,
                 strip_or_import(get_type_fullname(type(value)), module, known_modules, imports),
             )
@@ -765,4 +765,4 @@ def infer_method_ret_type(name: str) -> str:
             return "int"
         elif name in ("init", "setitem"):
             return "None"
-    return "Any"
+    return "typing.Any"
