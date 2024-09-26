@@ -682,6 +682,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             name=o.name,
             docstring=self._get_func_docstring(o),
             is_abstract=o.abstract_status != NOT_ABSTRACT,
+            is_static="@staticmethod" in self._decorators,
             class_info=class_info,
         )
 

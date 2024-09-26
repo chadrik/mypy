@@ -623,6 +623,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         if self.is_private_name(name, ctx.fullname) or self.is_not_in_all(name):
             return
 
+        if class_info is not None:
+            ctx.is_static = self.is_staticmethod(class_info, name, obj)
+
         self.record_name(ctx.name)
         default_sig = self.get_default_function_sig(obj, ctx)
         inferred = self.get_signatures(default_sig, self.sig_generators, ctx)
@@ -632,11 +635,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         if len(inferred) > 1:
             decorators.append("@{}".format(self.add_name("typing.overload")))
 
-        if ctx.is_abstract:
-            decorators.append("@{}".format(self.add_name("abc.abstractmethod")))
-
         if class_info is not None:
-            if self.is_staticmethod(class_info, name, obj):
+            if ctx.is_abstract:
+                decorators.append("@{}".format(self.add_name("abc.abstractmethod")))
+
+            if ctx.is_static:
                 decorators.append("@staticmethod")
             else:
                 for sig in inferred:

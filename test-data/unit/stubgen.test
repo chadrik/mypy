@@ -1325,7 +1325,7 @@ class A:
 [out]
 class A:
     class B:
-        x: int
+        x: in
         def f(self) -> None: ...
     def g(self) -> None: ...
 
