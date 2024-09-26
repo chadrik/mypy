@@ -346,12 +346,14 @@ class FunctionContext:
         name: str,
         docstring: str | None = None,
         is_abstract: bool = False,
+        is_static: bool = False,
         class_info: ClassInfo | None = None,
     ) -> None:
         self.module_name = module_name
         self.name = name
         self.docstring = docstring
         self.is_abstract = is_abstract
+        self.is_static = is_static
         self.class_info = class_info
         self._fullname: str | None = None
 
