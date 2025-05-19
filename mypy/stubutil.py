@@ -16,7 +16,7 @@ from mypy_extensions import mypyc_attr
 
 import mypy.options
 from mypy.modulefinder import ModuleNotFoundReason
-from mypy.moduleinspect import InspectError, ModuleInspect
+from mypy.moduleinspect import InspectError, ModuleInspect, get_package_properties
 from mypy.nodes import PARAM_SPEC_KIND, TYPE_VAR_TUPLE_KIND, ClassDef, FuncDef, TypeAliasStmt
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.types import (
@@ -71,7 +71,6 @@ def walk_packages(
     extensions do not have this attribute, so we have to roll out our own logic: recursively
     find all modules imported in the package that have matching names.
     """
-    from mypy import moduleinspect
 
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:
@@ -80,7 +79,7 @@ def walk_packages(
         if verbose:
             print(f"Trying to import {package_name!r} for runtime introspection")
         try:
-            prop = moduleinspect.get_package_properties(package_name)
+            prop = get_package_properties(package_name)
             # prop = inspect.get_package_properties(package_name)
         except InspectError:
             if verbose:
@@ -118,6 +117,7 @@ def find_module_path_and_all_py3(
     Return (module_path, __all__) if it is a Python module.
     Raise CantImport if import failed.
     """
+
     if module in NOT_IMPORTABLE_MODULES:
         raise CantImport(module, "")
 
@@ -125,7 +125,8 @@ def find_module_path_and_all_py3(
     if verbose:
         print(f"Trying to import {module!r} for runtime introspection")
     try:
-        mod = inspect.get_package_properties(module)
+        mod = get_package_properties(module)
+        # mod = inspect.get_package_properties(module)
     except InspectError as e:
         # Fall back to finding the module using sys.path.
         path = find_module_path_using_sys_path(module, sys.path)

@@ -66,7 +66,7 @@ from mypy.modulefinder import (
     SearchPaths,
     default_lib_path,
 )
-from mypy.moduleinspect import ModuleInspect, is_pyc_only
+from mypy.moduleinspect import is_pyc_only
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -1559,7 +1559,9 @@ def find_module_paths_using_imports(
 
     This function uses runtime Python imports to get the information.
     """
-    with ModuleInspect() as inspect:
+    from contextlib import nullcontext
+
+    with nullcontext() as inspect:
         py_modules: list[StubSource] = []
         c_modules: list[StubSource] = []
         found = list(walk_packages(inspect, packages, verbose))
