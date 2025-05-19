@@ -71,6 +71,8 @@ def walk_packages(
     extensions do not have this attribute, so we have to roll out our own logic: recursively
     find all modules imported in the package that have matching names.
     """
+    from mypy import moduleinspect
+
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:
             print(f"{package_name}: Skipped (blacklisted)")
@@ -78,7 +80,8 @@ def walk_packages(
         if verbose:
             print(f"Trying to import {package_name!r} for runtime introspection")
         try:
-            prop = inspect.get_package_properties(package_name)
+            prop = moduleinspect.get_package_properties(package_name)
+            # prop = inspect.get_package_properties(package_name)
         except InspectError:
             if verbose:
                 tb = traceback.format_exc()
