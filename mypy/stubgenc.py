@@ -394,7 +394,12 @@ class InspectionStubGenerator(BaseStubGenerator):
             typ: name of the type
         """
         local_modules = ["builtins", self.module_name]
-        parsed_type = parse_type_comment(type_name, 0, 0, None)[1]
+        try:
+            parsed_type = parse_type_comment(type_name, 0, 0, None)[1]
+        except SyntaxError:
+            print(f"Invalid type {type_name} in module {self.module_name}")
+            return type_name
+
         assert parsed_type is not None, type_name
         return self.print_annotation(parsed_type, self.known_modules, local_modules)
 
