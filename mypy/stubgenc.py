@@ -801,6 +801,12 @@ class InspectionStubGenerator(BaseStubGenerator):
                 bases.append(base)
         return [self.strip_or_import(self.get_type_fullname(base)) for base in bases]
 
+    def get_literal_expr(self, value: object) -> str:
+        if isinstance(value, (str, bytes, int, float, complex)):
+            return repr(value)
+        else:
+            return "..."
+
     def generate_class_stub(
         self, class_name: str, cls: type, output: list[str], parent_class: ClassInfo | None = None
     ) -> None:
@@ -811,6 +817,12 @@ class InspectionStubGenerator(BaseStubGenerator):
         """
         raw_lookup: Mapping[str, Any] = getattr(cls, "__dict__")  # noqa: B009
         items = self.get_members(cls)
+        if issubclass(cls, enum.Enum):
+            # enum subclasses contain many implicit members such as _member_names_ and
+            # _member_map_ which we don't want to regenerate.
+            base_members = set(enum.Enum.__dict__)
+            items = [(attr, value) for attr, value in items if attr not in base_members]
+
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
         names = {x[0] for x in items}
@@ -866,12 +878,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 attrs.append((attr, value))
 
         for attr, value in attrs:
-            if attr == "__hash__" and value is None:
-                # special case for __hash__
-                continue
-            prop_type_name = self.strip_or_import(self.get_type_annotation(value))
-            classvar = self.add_name("typing.ClassVar")
-            static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
+            static_attr = self.generate_class_attr(cls, attr, value)
+            if static_attr is not None:
+                static_properties.append(static_attr)
 
         self.dedent()
 
@@ -906,6 +915,19 @@ class InspectionStubGenerator(BaseStubGenerator):
             output.extend(ro_properties)
         else:
             output.append(f"{self._indent}class {class_name}{bases_str}: ...")
+
+    def generate_class_attr(self, cls: type, attr: str, value: object) -> str | None:
+        if attr == "__hash__" and value is None:
+            # special case for __hash__
+            return None
+        if isinstance(value, enum.Enum) and type(value) is cls:
+            # special case for enum
+            initializer = self.get_literal_expr(value._value_)
+            return f"{self._indent}{attr} = {initializer}"
+        else:
+            prop_type_name = self.strip_or_import(self.get_type_annotation(value))
+            classvar = self.add_name("typing.ClassVar")
+            return f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ..."
 
     def generate_variable_stub(self, name: str, obj: object, output: list[str]) -> None:
         """Generate stub for a single variable using runtime introspection.
