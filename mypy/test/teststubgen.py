@@ -699,6 +699,26 @@ class StubgenUtilSuite(unittest.TestCase):
             == []
         )
 
+    def test_infer_sig_from_docstring_complex(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring(
+                "func(self, type: Type[T], name: str = {}, options: X.Y.Z = Instance(Foo.Bar)) -> Optional[T]",
+                "func",
+            ),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[
+                        ArgSig(name="self", type=None, default=False),
+                        ArgSig(name="type", type="Type[T]"),
+                        ArgSig(name="name", type="str", default=True),
+                        ArgSig(name="options", type="X.Y.Z", default=True),
+                    ],
+                    ret_type="Optional[T]",
+                )
+            ],
+        )
+
     def test_remove_misplaced_type_comments_1(self) -> None:
         good = """
         \u1234
