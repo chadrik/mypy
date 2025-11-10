@@ -820,8 +820,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         if issubclass(cls, enum.Enum):
             # enum subclasses contain many implicit members such as _member_names_ and
             # _member_map_ which we don't want to regenerate.
-            base_members = set(enum.Enum.__dict__)
-            items = [(attr, value) for attr, value in items if attr not in base_members]
+            for enum_base in cls.mro()[1:]:
+                if issubclass(enum_base, enum.Enum):
+                    base_members = set(enum_base.__dict__)
+                    items = [(attr, value) for attr, value in items if attr not in base_members]
+                    break
 
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
