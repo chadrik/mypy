@@ -719,6 +719,12 @@ class StubgenUtilSuite(unittest.TestCase):
             ],
         )
 
+    def test_infer_sig_from_docstring_variadic(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(*args: *T) -> Foo[*T]", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="*args", type="*T")], ret_type="Foo[*T]")],
+        )
+
     def test_remove_misplaced_type_comments_1(self) -> None:
         good = """
         \u1234
