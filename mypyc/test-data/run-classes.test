@@ -4905,6 +4905,219 @@ test_getattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
 
+[case testDunderGetAttrNativeSemantics]
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+
+counter = 0
+
+class Wrapper:
+    def __init__(self, data: dict) -> None:
+        self.declared = 1
+        self.data = data
+
+    @property
+    def prop(self) -> int:
+        return self.declared + 1
+
+    @property
+    def bad_prop(self) -> int:
+        raise ValueError("bad property")
+
+    def method(self) -> int:
+        return 3
+
+    def __getattr__(self, name: str) -> Any:
+        global counter
+        counter += 1
+        try:
+            return self.data[name]
+        except KeyError:
+            raise AttributeError(name)
+
+class SubWrapper(Wrapper):
+    def __getattr__(self, name: str) -> Any:
+        return "sub:" + name
+
+class GenWrapper(Generic[T]):
+    def __init__(self, item: T, data: dict) -> None:
+        self.item = item
+        self.data = data
+
+    @property
+    def first(self) -> T:
+        return self.item
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self.data[name]
+        except KeyError:
+            raise AttributeError(name)
+
+class GenSub(GenWrapper[int]):
+    def __init__(self, item: int, data: dict, extra: int) -> None:
+        super().__init__(item, data)
+        self.extra = extra
+
+class GenPlain(Generic[T]):
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+def test_declared_attrs_dont_call_getattr() -> None:
+    global counter
+    counter = 0
+    w = Wrapper({"dynamic": 42})
+    # Static, native accesses never consult __getattr__.
+    assert w.declared == 1
+    assert w.prop == 2
+    assert w.method() == 3
+    assert counter == 0
+    # Successful generic lookups don't consult __getattr__ either.
+    assert getattr(w, "declared") == 1
+    assert getattr(w, "prop") == 2
+    assert counter == 0
+    # Missed lookups call __getattr__.
+    assert w.dynamic == 42
+    assert counter == 1
+    assert getattr(w, "dynamic") == 42
+    assert counter == 2
+
+def test_attribute_error_from_getattr_propagates() -> None:
+    w = Wrapper({})
+    try:
+        w.missing
+    except AttributeError as e:
+        assert str(e) == "missing"
+    else:
+        assert False
+    assert getattr(w, "missing", "default") == "default"
+    assert not hasattr(w, "missing")
+
+def test_non_attribute_error_not_swallowed() -> None:
+    global counter
+    counter = 0
+    # Even though the fallback dict could satisfy the lookup, a property
+    # raising a non-AttributeError must propagate without consulting
+    # __getattr__ (like CPython's slot_tp_getattr_hook).
+    w = Wrapper({"bad_prop": "should not be returned"})
+    try:
+        getattr(w, "bad_prop")
+    except ValueError as e:
+        assert str(e) == "bad property"
+    else:
+        assert False
+    assert counter == 0
+
+def test_subclass_override() -> None:
+    s = SubWrapper({})
+    assert s.declared == 1
+    assert s.prop == 2
+    assert s.anything == "sub:anything"
+    w: Wrapper = s
+    # Dispatch must respect the subclass override through a base reference.
+    assert w.whatever == "sub:whatever"
+    assert getattr(w, "zzz") == "sub:zzz"
+
+def test_generic_wrapper() -> None:
+    g: GenWrapper[int] = GenWrapper(5, {"name": "foo"})
+    assert g.item == 5
+    assert g.first == 5
+    assert g.name == "foo"
+    assert getattr(g, "name") == "foo"
+    try:
+        g.missing
+    except AttributeError:
+        pass
+    else:
+        assert False
+
+def test_generic_subclass_inherits_getattr() -> None:
+    s = GenSub(5, {"name": "foo"}, 7)
+    assert s.item == 5
+    assert s.extra == 7
+    assert s.first == 5
+    assert s.name == "foo"
+    assert getattr(s, "name") == "foo"
+    try:
+        s.missing
+    except AttributeError:
+        pass
+    else:
+        assert False
+
+def test_generic_class_is_native() -> None:
+    p = GenPlain(1)
+    assert not hasattr(p, "__dict__")
+    try:
+        setattr(p, "undeclared", 2)
+    except AttributeError:
+        pass
+    else:
+        assert False
+
+[file driver.py]
+import native
+from native import Wrapper, SubWrapper, GenWrapper, GenSub, GenPlain
+
+native.test_declared_attrs_dont_call_getattr()
+native.test_attribute_error_from_getattr_propagates()
+native.test_non_attribute_error_not_swallowed()
+native.test_subclass_override()
+native.test_generic_wrapper()
+native.test_generic_subclass_inherits_getattr()
+native.test_generic_class_is_native()
+
+# Same checks from interpreted code, which always goes through tp_getattro.
+native.counter = 0
+w = Wrapper({"dynamic": 42})
+assert w.declared == 1
+assert w.prop == 2
+assert w.method() == 3
+assert native.counter == 0
+assert w.dynamic == 42
+assert native.counter == 1
+
+try:
+    w.missing
+except AttributeError as e:
+    assert str(e) == "missing"
+else:
+    assert False
+assert getattr(w, "missing", "default") == "default"
+assert not hasattr(w, "missing")
+
+try:
+    w.bad_prop
+except ValueError as e:
+    assert str(e) == "bad property"
+else:
+    assert False
+
+s = SubWrapper({})
+assert s.declared == 1
+assert s.anything == "sub:anything"
+
+g = GenWrapper(5, {"name": "foo"})
+assert g.item == 5
+assert g.first == 5
+assert g.name == "foo"
+
+gs = GenSub(5, {"name": "foo"}, 7)
+assert gs.extra == 7
+assert gs.name == "foo"
+
+p = GenPlain(1)
+assert not hasattr(p, "__dict__")
+try:
+    p.undeclared = 2
+except AttributeError:
+    pass
+else:
+    assert False
+
+[typing fixtures/typing-full.pyi]
+
 [case testDunderSetAttr]
 from mypy_extensions import mypyc_attr
 from testutil import assertRaises

@@ -286,9 +286,12 @@ work as expected.
 
 * ``__del__``
 * ``__index__``
-* ``__getattr__``, ``__getattribute__``
-* ``__setattr__``
-* ``__delattr__``
+* ``__getattribute__``
+
+``__getattr__`` and ``__setattr__`` are supported in native classes,
+except in classes that allow interpreted subclasses or inherit from a
+non-native class. ``__delattr__`` is only supported in classes that
+also define ``__setattr__``.
 
 Generator expressions
 *********************

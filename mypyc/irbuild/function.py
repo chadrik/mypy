@@ -60,6 +60,7 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
@@ -82,6 +83,7 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     exact_dict_set_item_op,
 )
+from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.sametype import is_same_method_signature, is_same_type
@@ -417,6 +419,22 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
         builder.add(Return(generic_getattr_result, line))
 
         builder.activate_block(call_getattr)
+        # CPython only falls back to __getattr__ when the generic attribute
+        # lookup fails with an AttributeError (which CPyObject_GenericGetAttr
+        # suppresses). If the lookup failed with any other exception (eg a
+        # property getter raised), propagate it instead of calling
+        # __getattr__, like _Py_slot_tp_getattr_hook does.
+        propagate, no_err = BasicBlock(), BasicBlock()
+        err = builder.call_c(err_occurred_op, [], line)
+        null_ptr = Integer(0, pointer_rprimitive, line)
+        err_set = builder.add(ComparisonOp(err, null_ptr, ComparisonOp.NEQ, line))
+        builder.add_bool_branch(err_set, propagate, no_err)
+
+        builder.activate_block(propagate)
+        builder.call_c(keep_propagating_op, [], line)
+        builder.add(Unreachable())
+
+        builder.activate_block(no_err)
         # No attribute matched so call user-provided __getattr__.
         getattr_result = builder.gen_method_call(
             builder.self(), getattr.name, [attr_arg], object_rprimitive, line
