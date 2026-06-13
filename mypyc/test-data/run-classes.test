@@ -2699,6 +2699,46 @@ def test_serializable_sub_class_call_new() -> None:
     with assertRaises(AttributeError):
         base.s
 
+[case testSerializableClassConstructedFromInterpreted]
+# A serializable native class has tp_new return the bare instance (so that
+# __new__ doesn't call __init__, as needed for pickle/copy). __init__ must
+# therefore be invoked by tp_init; otherwise constructing such a class from
+# *interpreted* code (which goes through tp_new + tp_init rather than the
+# native constructor) silently skips __init__ and leaves attributes undefined.
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(serializable=True)
+class Ser:
+    def __init__(self, s: str, n: int) -> None:
+        self.s = s
+        self.n = n
+        self.computed = s * n
+
+@mypyc_attr(serializable=True)
+class SerSub(Ser):
+    def __init__(self, s: str, n: int, extra: str) -> None:
+        super().__init__(s, n)
+        self.extra = extra
+
+[file driver.py]
+# Imported as interpreted code: construction goes via tp_new/tp_init.
+from native import Ser, SerSub
+
+o = Ser("ab", 3)
+assert o.s == "ab", o.s
+assert o.n == 3, o.n
+assert o.computed == "ababab", o.computed
+
+sub = SerSub("x", 2, "hi")
+assert sub.s == "x"
+assert sub.n == 2
+assert sub.computed == "xx"
+assert sub.extra == "hi"
+
+print("ok")
+[out]
+ok
+
 [case testClassWithInherited__call__]
 class Base:
     def __call__(self) -> int:

@@ -789,7 +789,18 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("static int")
     emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
-    if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
+    # tp_init must call __init__ in exactly the cases where tp_new (see
+    # generate_new_for_class) does *not* call it implicitly. For serializable
+    # classes tp_new returns the bare instance (to match Python's "__new__
+    # doesn't call __init__" semantics needed for pickle/copy), so __init__ must
+    # be invoked here -- otherwise Python-level construction skips __init__
+    # entirely and instances come back with undefined attributes.
+    if (
+        cl.allow_interpreted_subclasses
+        or cl.builtin_base
+        or cl.has_method("__new__")
+        or cl.is_serializable()
+    ):
         emitter.emit_line(
             f"return {emitter.wrapper_function_call(init_fn.decl)}"
             "(self, args, kwds) != NULL ? 0 : -1;"
