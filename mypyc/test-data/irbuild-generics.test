@@ -86,9 +86,8 @@ def f(x: C[int]) -> None:
 def C.__init__(self, x):
     self :: __main__.C
     x :: object
-    r0 :: bool
 L0:
-    self.x = x; r0 = is_error
+    self.x = x
     return 1
 def C.get(self):
     self :: __main__.C

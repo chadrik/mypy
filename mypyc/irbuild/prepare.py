@@ -559,7 +559,19 @@ def prepare_class_def(
             base_mro.append(base_ir)
         mro.append(base_ir)
 
-        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
+        # Base class expressions that were removed during semantic analysis
+        # (e.g. Generic[T] and Protocol[T]) are still passed to the type
+        # constructor at runtime, so they can introduce non-native classes
+        # into the runtime MRO. typing.Generic is an exception: it carries no
+        # instance state (its __slots__ is empty) and doesn't customize
+        # attribute access, so it is safe to keep the class fully native.
+        # This also matches new-style (PEP 695) generic classes, which get a
+        # runtime Generic base class without being demoted.
+        has_python_bases = any(
+            get_removed_base_fullname(expr) != "typing.Generic"
+            for expr in cls.defn.removed_base_type_exprs
+        )
+        if has_python_bases or not base_ir.is_ext_class:
             ir.inherits_python = True
 
     base_idx = 1 if not ir.is_trait else 0

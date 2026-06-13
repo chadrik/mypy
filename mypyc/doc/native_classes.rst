@@ -124,7 +124,10 @@ Generic native classes
 ----------------------
 
 Native classes can be generic. Type variables are *erased* at runtime,
-and instances don't keep track of type variable values.
+and instances don't keep track of type variable values. A
+``typing.Generic`` base class doesn't make a class non-native:
+instances of generic native classes are fully native and don't have
+an instance ``__dict__``.
 
 Compiled code thus can't check the values of type variables when
 performing runtime type checks. These checks are delayed to when

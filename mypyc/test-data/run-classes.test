@@ -1632,8 +1632,9 @@ assert T.__mypyc_attrs__ == ('a',)
 assert C.__mypyc_attrs__ == ('w', 'z', 'x', 'y', 'a')
 assert not hasattr(D, '__mypyc_attrs__')
 assert E.__mypyc_attrs__ == ('y', '__dict__')
-assert F.__mypyc_attrs__ == ('y', '__dict__')
-assert G.__mypyc_attrs__ == ('y', '__dict__')
+# Generic classes are fully native and don't get an instance __dict__.
+assert F.__mypyc_attrs__ == ('y',)
+assert G.__mypyc_attrs__ == ('y',)
 
 b = B(10, '20', False)
 assert b.__getstate__() == {'z': False, 'x': 10, 'y': '20'}

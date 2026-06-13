@@ -253,15 +253,15 @@ def __top_level__():
     r62 :: str
     r63, r64 :: object
     r65, r66 :: bool
-    r67, r68 :: str
-    r69 :: tuple
-    r70 :: i32
-    r71 :: bit
-    r72 :: dict
-    r73 :: str
-    r74 :: i32
-    r75 :: bit
-    r76 :: bool
+    r67 :: str
+    r68 :: tuple
+    r69 :: i32
+    r70 :: bit
+    r71 :: dict
+    r72 :: str
+    r73 :: i32
+    r74 :: bit
+    r75 :: bool
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -340,16 +340,15 @@ L2:
     r65 = D_trait_vtable_setup()
     r66 = D_coroutine_setup(r64)
     r67 = '__mypyc_attrs__'
-    r68 = '__dict__'
-    r69 = PyTuple_Pack(1, r68)
-    r70 = PyObject_SetAttr(r64, r67, r69)
-    r71 = r70 >= 0 :: signed
+    r68 = CPyTuple_LoadEmptyTupleConstant()
+    r69 = PyObject_SetAttr(r64, r67, r68)
+    r70 = r69 >= 0 :: signed
     __main__.D = r64 :: type
-    r72 = __main__.globals :: static
-    r73 = 'D'
-    r74 = PyDict_SetItem(r72, r73, r64)
-    r75 = r74 >= 0 :: signed
-    r76 = CPy_InitSubclass(r64)
+    r71 = __main__.globals :: static
+    r72 = 'D'
+    r73 = PyDict_SetItem(r71, r72, r64)
+    r74 = r73 >= 0 :: signed
+    r75 = CPy_InitSubclass(r64)
     return 1
 
 [case testIsInstance]
@@ -2184,7 +2183,10 @@ class BadDerivedNonNative(NonNativeBase):  # E: "acyclic" can't be used in a cla
     pass
 
 [case testUnsupportedGetAttr]
+from typing import Generic, TypeVar
 from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class AllowsInterpreted:
@@ -2202,6 +2204,11 @@ class NonNative:
 class InheritsNonNative(NonNative):
     def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
         return 0
+
+class InheritsNonNativeGeneric(NonNative, Generic[T]):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsNonNativeGeneric" because it inherits from a non-native class
+        return 0
+[typing fixtures/typing-full.pyi]
 
 [case testGetAttr]
 from typing import ClassVar
@@ -2316,6 +2323,67 @@ L0:
     buf_init_item r13, 4, r12
     keep_alive r9
     return r9
+
+[case testGetAttrGeneric]
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+
+class Wrapper(Generic[T]):
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+    def __getattr__(self, attr: str) -> Any:
+        return attr
+
+def get(w: Wrapper[int]) -> object:
+    return w.dynamic
+[typing fixtures/typing-full.pyi]
+[out]
+def Wrapper.__init__(self, item):
+    self :: __main__.Wrapper
+    item :: object
+L0:
+    self.item = item
+    return 1
+def Wrapper.__getattr__(self, attr):
+    self :: __main__.Wrapper
+    attr :: str
+L0:
+    return attr
+def Wrapper.__getattr____wrapper(__mypyc_self__, attr):
+    __mypyc_self__ :: __main__.Wrapper
+    attr, r0 :: object
+    r1 :: bit
+    r2 :: object
+    r3, r4 :: bit
+    r5 :: str
+    r6 :: object
+L0:
+    r0 = CPyObject_GenericGetAttr(__mypyc_self__, attr)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return r0
+L2:
+    r2 = PyErr_Occurred()
+    r3 = r2 != 0
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = CPy_KeepPropagating()
+    unreachable
+L4:
+    r5 = cast(str, attr)
+    r6 = __mypyc_self__.__getattr__(r5)
+    return r6
+def get(w):
+    w :: __main__.Wrapper
+    r0 :: str
+    r1 :: object
+L0:
+    r0 = 'dynamic'
+    r1 = CPyObject_GetAttr(w, r0)
+    return r1
 
 [case testUnsupportedSetAttr]
 from mypy_extensions import mypyc_attr
