@@ -102,9 +102,9 @@ from mypy.ipc import (
     IPCException,
     IPCMessage,
     read_status,
-    ready_to_read,
     receive,
     send,
+    wait_readable,
 )
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -1381,17 +1381,18 @@ class BuildManager:
     def receive_worker_message(self, idx: int) -> ReadBuffer:
         """Receive a single message from a worker, with crash diagnostics."""
         try:
+            wait_readable([self.workers[idx].conn], WORKER_DONE_TIMEOUT, f"worker {idx}")
             return receive(self.workers[idx].conn)
-        except OSError as exc:
+        except (OSError, IPCException) as exc:
             try:
                 # Give worker process a chance to actually terminate before reporting.
                 exit_code = self.workers[idx].proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
             except TimeoutError:
                 exit_code = None
             exit_status = f"exit code {exit_code}" if exit_code is not None else "still running"
-            raise OSError(
-                f"Worker {idx} disconnected before sending data ({exit_status})"
-            ) from exc
+            # The worker may have hung up, or gone quiet without doing so, hence the
+            # deliberately vague wording: exit_status tells the two apart.
+            raise OSError(f"No data from worker {idx} ({exit_status})") from exc
 
     def submit(self, graph: Graph, sccs: list[SCC]) -> None:
         """Submit a stale SCC for processing in current process or parallel workers."""
@@ -1493,7 +1494,11 @@ class BuildManager:
         done_sccs = []
         results = {}
         t0 = time.time()
-        ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
+        # We only wait while SCCs are outstanding, so total silence for this long
+        # means every worker is stuck for good rather than merely slow.
+        ready = wait_readable(
+            [w.conn for w in self.workers], WORKER_DONE_TIMEOUT, "any worker to respond"
+        )
         t1 = time.time()
         for idx in ready:
             buf = self.receive_worker_message(idx)

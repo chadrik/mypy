@@ -51,7 +51,7 @@ from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDL
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCException, IPCServer, ready_to_read, receive, send
+from mypy.ipc import IPCException, IPCServer, receive, send, wait_readable
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.nodes import FileRawData
 from mypy.options import Options
@@ -154,6 +154,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     SCC checking request and reply to client (coordinator). See module
     docstring for more details on the protocol.
     """
+    wait_readable([server], WORKER_IDLE_TIMEOUT, "the coordinator")
     buf = receive(server)
     if should_shutdown(buf, SOURCES_DATA_MESSAGE):
         return
@@ -162,8 +163,10 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     if manager is None:
         return
 
-    # Notify coordinator we are done with setup.
+    # Notify coordinator we are done with setup. It will not talk to us again until
+    # it has finished loading the graph, which can take a while on a large build.
     send(server, AckMessage())
+    wait_readable([server], WORKER_IDLE_TIMEOUT, "the coordinator")
     buf = receive(server)
     if should_shutdown(buf, GRAPH_MESSAGE):
         return
@@ -184,6 +187,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
 
     # Notify coordinator we are ready to receive computed graph SCC structure.
     send(server, AckMessage())
+    wait_readable([server], WORKER_IDLE_TIMEOUT, "the coordinator")
     buf = receive(server)
     if should_shutdown(buf, SCCS_DATA_MESSAGE):
         return
@@ -199,7 +203,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     send(server, AckMessage())
     while True:
         t0 = time.time()
-        ready_to_read([server], WORKER_IDLE_TIMEOUT)
+        wait_readable([server], WORKER_IDLE_TIMEOUT, "the coordinator")
         t1 = time.time()
         buf = receive(server)
         assert read_tag(buf) == SCC_REQUEST_MESSAGE

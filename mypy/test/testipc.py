@@ -7,7 +7,7 @@ from unittest import TestCase, main
 
 import pytest
 
-from mypy.ipc import IPCClient, IPCServer
+from mypy.ipc import IPCClient, IPCException, IPCServer, wait_readable
 
 CONNECTION_NAME = "dmypy-test-ipc"
 
@@ -45,6 +45,15 @@ def server_with_short_timeout(msg: str, q: Queue[str]) -> None:
     with server:
         data = server.read()
         server.write(data + msg)
+    server.cleanup()
+
+
+def server_that_never_answers(q: Queue[str]) -> None:
+    """Accept a connection and then say nothing, without hanging up."""
+    server = IPCServer(CONNECTION_NAME)
+    q.put(server.connection_name)
+    with server:
+        server.read()
     server.cleanup()
 
 
@@ -128,6 +137,28 @@ class IPCTests(TestCase):
             time.sleep(2.5)
             client.write("hello")
             assert client.read() == "hello" + msg
+        queue.close()
+        queue.join_thread()
+        p.join()
+        assert p.exitcode == 0
+
+    def test_wait_readable_bounds_a_silent_peer(self) -> None:
+        # Reads are unbounded once connected, so callers that cannot afford to wait
+        # forever bound the wait instead. This has to hold on every platform: it is
+        # the only thing standing between a peer that never answers and a build
+        # that never finishes.
+        queue: Queue[str] = self.ctx.Queue()
+        p = self.ctx.Process(target=server_that_never_answers, args=(queue,), daemon=True)
+        p.start()
+        connection_name = queue.get()
+        with IPCClient(connection_name, timeout=1) as client:
+            t0 = time.time()
+            with pytest.raises(IPCException, match="Timed out waiting"):
+                wait_readable([client], 1)
+            elapsed = time.time() - t0
+            assert 0.5 < elapsed < 10, elapsed
+            # The peer is quiet, not gone: it still answers once we say something.
+            client.write("quit")
         queue.close()
         queue.join_thread()
         p.join()
