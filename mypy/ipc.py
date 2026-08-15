@@ -479,13 +479,7 @@ def wait_readable(
 ) -> list[int]:
     """Wait until some connections are readable, or raise IPCException.
 
-    Return the index of each readable connection, as ready_to_read() does, and
-    describe what we were waiting for if nothing arrives in time.
-
-    A server does not bound its reads once it has accepted a connection, on
-    either platform, so this is what keeps a peer that has gone quiet without
-    hanging up from stalling us forever. Waiting here rather than in read_bytes()
-    also keeps the two apart in timing stats.
+    Return the index of each readable connection, as ready_to_read() does.
     """
     ready = ready_to_read(conns, timeout)
     if not ready:

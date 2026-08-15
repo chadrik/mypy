@@ -1390,8 +1390,7 @@ class BuildManager:
             except TimeoutError:
                 exit_code = None
             exit_status = f"exit code {exit_code}" if exit_code is not None else "still running"
-            # The worker may have hung up, or gone quiet without doing so, hence the
-            # deliberately vague wording: exit_status tells the two apart.
+            # The worker may have hung up, or gone quiet without doing so.
             raise OSError(f"No data from worker {idx} ({exit_status})") from exc
 
     def submit(self, graph: Graph, sccs: list[SCC]) -> None:
