@@ -65,12 +65,8 @@ class IPCBase:
 
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
-        self.timeout = timeout
-        # Timeout to apply to reads and writes, as opposed to self.timeout, which
-        # bounds establishing the connection. On POSIX this is not consulted: the
-        # socket enforces its own, and this only mirrors it so that both platforms
-        # behave the same. Subclasses set it to match their POSIX counterpart.
-        self.io_timeout = timeout
+        self.timeout = timeout  # Connections
+        self.io_timeout = timeout  # Reads and writes
         self.message_size: int | None = None
         self.buffer = bytearray()
 
@@ -256,10 +252,10 @@ class IPCServer(IPCBase):
         else:
             name = f"{name}.sock"
         super().__init__(name, timeout)
-        # Unlike IPCClient, a server applies its timeout only to accepting a
+        # Unlike the client, a server applies its timeout only to accepting a
         # connection, never to the traffic that follows: see __enter__ below. Once a
         # peer is connected it may legitimately stay silent for a long time while it
-        # computes, and it is not our place to give up on it.
+        # computes.
         self.io_timeout = None
         if sys.platform == "win32":
             self.connection = _winapi.CreateNamedPipe(
@@ -312,12 +308,10 @@ class IPCServer(IPCBase):
                 assert err == 0
         else:
             try:
-                # Note self.timeout was set on the listening socket, so it bounds
-                # accept() only: the socket returned here is always blocking, since
-                # CPython overrides timeout inheritance when the listening socket
-                # has one (see socket.accept()). This is why self.io_timeout is
-                # None -- it is what keeps Windows, where the timeout would
-                # otherwise apply to every wait, behaving the same way.
+                # Note self.timeout is set on the listening socket in __init__, but this
+                # applies to accept() only: the socket returned below is always blocking
+                # (see socket.accept()). This is why self.io_timeout is None -- it ensures
+                # equivalent behavior between Windows and POSIX.
                 self.connection, _ = self.sock.accept()
                 # This is already default on Linux, we set same buffer size
                 # for macOS vs Linux consistency to simplify reasoning.
